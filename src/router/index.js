@@ -12,6 +12,7 @@ const routes = [
   { path: '/login', name: 'auth.login', component: () => import('@/pages/auth/LoginPage.vue'), meta: { guestOnly: true } },
   { path: '/register', name: 'auth.register', component: () => import('@/pages/auth/RegisterPage.vue'), meta: { guestOnly: true } },
   { path: '/forgot-password', name: 'auth.forgot-password', component: () => import('@/pages/auth/ForgotPasswordPage.vue'), meta: { guestOnly: true } },
+  { path: '/reset-password', name: 'auth.reset-password', component: () => import('@/pages/auth/ResetPasswordPage.vue') },
 
   // Client (requiert auth)
   { path: '/checkout', name: 'client.checkout', component: () => import('@/pages/client/CheckoutPage.vue'), meta: { requiresAuth: true } },

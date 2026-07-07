@@ -46,6 +46,9 @@ export const useReservationStore = defineStore('reservation', () => {
     error.value = null
     const cartStore = useCartStore()
     const createdReservations = []
+    const discountRatio = cartStore.subtotal > 0
+      ? cartStore.promoDiscount / cartStore.subtotal
+      : 0
 
     try {
       for (const item of cartItems) {
@@ -61,24 +64,30 @@ export const useReservationStore = defineStore('reservation', () => {
           throw new Error(`La place ${item.spotName} n'est plus disponible sur ce créneau`)
         }
 
+        const discountAmount = item.totalPrice * discountRatio
+        const finalAmount = item.totalPrice - discountAmount
+
         const reservation = await reservationService.create({
           reservation_number: generateReservationNumber(),
           user_id: userId,
           parking_spot_id: item.parkingSpotId,
+          promo_code_id: cartStore.promoCode?.id ?? null,
           start_date_time: item.startDateTime,
           end_date_time: item.endDateTime,
           duration_hours: item.durationHours,
           amount: item.totalPrice,
+          discount_amount: discountAmount,
+          final_amount: finalAmount,
           status: 'pending',
           payment_status: 'pending'
         })
 
-        createdReservations.push(reservation)
+        createdReservations.push({ ...reservation, payableAmount: finalAmount })
       }
 
       const paymentResults = []
       for (const res of createdReservations) {
-        const payment = await paymentService.initiate(res.id, userId, res.amount)
+        const payment = await paymentService.initiate(res.id, userId, res.payableAmount)
         const { payment: paid, success } = await paymentService.simulate(payment.id, true)
 
         if (success) {

@@ -10,6 +10,7 @@ const route = useRoute()
 
 const form = reactive({ email: '', password: '' })
 const error = ref(null)
+const registered = route.query.registered === '1'
 
 async function submit() {
   error.value = null
@@ -26,6 +27,10 @@ async function submit() {
 <template>
   <AuthLayout>
     <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">Connexion</h2>
+
+    <div v-if="registered" class="text-green-700 text-sm bg-green-50 p-3 rounded-lg text-center mb-4">
+      Compte créé ! Vérifiez votre email si la confirmation est activée, puis connectez-vous.
+    </div>
 
     <form @submit.prevent="submit" class="space-y-4">
       <div>

@@ -7,6 +7,8 @@ export const useAuthStore = defineStore('auth', () => {
   const profile = ref(null)
   const loading = ref(false)
   const error = ref(null)
+  const authReady = ref(false)
+  let initPromise = null
 
   const isAuthenticated = computed(() => !!user.value)
   const isAdmin = computed(() => profile.value?.role === 'admin')
@@ -18,20 +20,31 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function init() {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session) {
-      user.value = session.user
-      await fetchProfile(session.user.id)
-    }
+    if (initPromise) return initPromise
 
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      user.value = session?.user ?? null
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-      } else {
-        profile.value = null
+    initPromise = (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          user.value = session.user
+          await fetchProfile(session.user.id)
+        }
+
+        supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'INITIAL_SESSION') return
+          user.value = session?.user ?? null
+          if (session?.user) {
+            await fetchProfile(session.user.id)
+          } else {
+            profile.value = null
+          }
+        })
+      } finally {
+        authReady.value = true
       }
-    })
+    })()
+
+    return initPromise
   }
 
   async function register({ firstName, lastName, email, phone, password }) {
@@ -51,6 +64,10 @@ export const useAuthStore = defineStore('auth', () => {
       if (data.user) {
         await supabase.from('profiles').update({ phone }).eq('id', data.user.id)
       }
+      if (data.session) {
+        user.value = data.user
+        await fetchProfile(data.user.id)
+      }
       return data
     } catch (err) {
       error.value = err.message
@@ -66,6 +83,8 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
       if (err) throw err
+      user.value = data.user
+      await fetchProfile(data.user.id)
       return data
     } catch (err) {
       error.value = err.message
@@ -82,10 +101,34 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function forgotPassword(email) {
-    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${import.meta.env.VITE_APP_URL}/reset-password`
-    })
-    if (err) throw err
+    loading.value = true
+    error.value = null
+    try {
+      const appUrl = import.meta.env.VITE_APP_URL || window.location.origin
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${appUrl}/reset-password`
+      })
+      if (err) throw err
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function resetPassword(password) {
+    loading.value = true
+    error.value = null
+    try {
+      const { error: err } = await supabase.auth.updateUser({ password })
+      if (err) throw err
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
   }
 
   async function updateProfile(updates) {
@@ -117,8 +160,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    user, profile, loading, error,
+    user, profile, loading, error, authReady,
     isAuthenticated, isAdmin, isClient,
-    init, register, login, logout, forgotPassword, updateProfile, canAccess
+    init, register, login, logout, forgotPassword, resetPassword, updateProfile, canAccess
   }
 })

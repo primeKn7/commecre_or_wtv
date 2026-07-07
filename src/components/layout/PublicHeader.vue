@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useCartStore } from '@/stores/cartStore'
@@ -9,6 +9,16 @@ const cartStore = useCartStore()
 const router = useRouter()
 const mobileMenuOpen = ref(false)
 const userMenuOpen = ref(false)
+const userMenuRef = ref(null)
+
+function handleClickOutside(event) {
+  if (userMenuRef.value && !userMenuRef.value.contains(event.target)) {
+    userMenuOpen.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', handleClickOutside))
+onUnmounted(() => document.removeEventListener('click', handleClickOutside))
 
 async function logout() {
   await authStore.logout()
@@ -44,13 +54,13 @@ async function logout() {
 
           <!-- Utilisateur connecté -->
           <template v-if="authStore.isAuthenticated">
-            <div class="relative">
-              <button @click="userMenuOpen = !userMenuOpen" class="flex items-center gap-2 hover:text-amber-400 transition-colors text-sm">
+            <div ref="userMenuRef" class="relative">
+              <button @click.stop="userMenuOpen = !userMenuOpen" class="flex items-center gap-2 hover:text-amber-400 transition-colors text-sm">
                 <div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center font-bold text-white">
                   {{ authStore.profile?.first_name?.charAt(0) ?? '?' }}
                 </div>
               </button>
-              <div v-if="userMenuOpen" @click.away="userMenuOpen = false"
+              <div v-if="userMenuOpen"
                 class="absolute right-0 mt-2 w-48 bg-white text-gray-900 rounded-lg shadow-xl border border-gray-100 py-1 z-50">
                 <RouterLink to="/profile" @click="userMenuOpen = false" class="block px-4 py-2 text-sm hover:bg-gray-50">Mon profil</RouterLink>
                 <RouterLink to="/my-reservations" @click="userMenuOpen = false" class="block px-4 py-2 text-sm hover:bg-gray-50">Mes réservations</RouterLink>

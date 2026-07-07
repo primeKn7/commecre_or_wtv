@@ -16,8 +16,12 @@ async function submit() {
   if (passwordMismatch.value) return
   error.value = null
   try {
-    await authStore.register(form)
-    router.push('/')
+    const data = await authStore.register(form)
+    if (data?.session) {
+      router.push('/')
+    } else {
+      router.push({ name: 'auth.login', query: { registered: '1' } })
+    }
   } catch (err) {
     error.value = err.message || 'Erreur lors de l\'inscription'
   }

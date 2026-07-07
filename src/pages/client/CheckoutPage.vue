@@ -27,6 +27,10 @@ async function applyPromo() {
 }
 
 async function checkout() {
+  if (!authStore.isAuthenticated || !authStore.user?.id) {
+    router.push({ name: 'auth.login', query: { redirect: '/checkout' } })
+    return
+  }
   try {
     const result = await reservationStore.checkout(
       authStore.user.id,

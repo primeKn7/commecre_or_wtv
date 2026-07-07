@@ -4,6 +4,10 @@ export function setupGuards(router) {
   router.beforeEach(async (to) => {
     const authStore = useAuthStore()
 
+    if (!authStore.authReady) {
+      await authStore.init()
+    }
+
     if (to.meta.requiresAdmin) {
       if (!authStore.isAuthenticated) return { name: 'auth.login', query: { redirect: to.fullPath } }
       if (!authStore.isAdmin) return { name: 'home' }

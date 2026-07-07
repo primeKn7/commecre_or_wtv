@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import PublicLayout from '@/layouts/PublicLayout.vue'
 import { useParkingStore } from '@/stores/parkingStore'
 import { useCartStore } from '@/stores/cartStore'
@@ -9,6 +9,7 @@ import { formatCurrency } from '@/utils/formatCurrency'
 import { formatDate } from '@/utils/formatDate'
 
 const route = useRoute()
+const router = useRouter()
 const parkingStore = useParkingStore()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
@@ -16,16 +17,31 @@ const authStore = useAuthStore()
 const startDateTime = ref('')
 const endDateTime = ref('')
 const added = ref(false)
+const bookingError = ref(null)
 
 onMounted(async () => {
   await parkingStore.loadSpotBySlug(route.params.slug)
 })
 
 function addToCart() {
-  if (!startDateTime.value || !endDateTime.value) return
+  bookingError.value = null
+  if (!startDateTime.value || !endDateTime.value) {
+    bookingError.value = 'Veuillez sélectionner les dates d\'arrivée et de départ'
+    return
+  }
+  if (new Date(endDateTime.value) <= new Date(startDateTime.value)) {
+    bookingError.value = 'La date de départ doit être après l\'arrivée'
+    return
+  }
   cartStore.addItem(parkingStore.selectedSpot, startDateTime.value, endDateTime.value)
   added.value = true
   setTimeout(() => added.value = false, 3000)
+}
+
+function bookNow() {
+  addToCart()
+  if (bookingError.value) return
+  router.push('/checkout')
 }
 
 const statusBadge = {
@@ -119,9 +135,10 @@ const statusBadge = {
                 <button @click="addToCart" :disabled="!startDateTime || !endDateTime" class="w-full btn-primary mb-3">
                   🛒 Ajouter au panier
                 </button>
-                <RouterLink to="/checkout" class="w-full btn-secondary block text-center">
+                <button @click="bookNow" :disabled="!startDateTime || !endDateTime" class="w-full btn-secondary">
                   ⚡ Réserver maintenant
-                </RouterLink>
+                </button>
+                <p v-if="bookingError" class="mt-3 text-center text-red-600 text-sm font-medium">{{ bookingError }}</p>
                 <div v-if="added" class="mt-3 text-center text-green-600 text-sm font-medium">✓ Ajouté au panier !</div>
               </template>
 
