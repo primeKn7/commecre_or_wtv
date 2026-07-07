@@ -14,7 +14,11 @@ async function bootstrap() {
 
   // Initialiser la session auth avant de monter l'app
   const authStore = useAuthStore()
-  await authStore.init()
+  try {
+    await authStore.init()
+  } catch (err) {
+    console.warn('Auth init failed (Supabase may not be configured):', err.message)
+  }
 
   app.mount('#app')
 }
